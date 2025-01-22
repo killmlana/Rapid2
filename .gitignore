@@ -1,2 +1,28 @@
-/.venv
-/__pycache__
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+*.code-workspace
+.idea/
+.vscode/
+
+
+# Data artifacts
+data/raw_pdfs/
+data/grobid_output/
+data/vila_output/
+chunks_debug.json
+parsed_file.csv
+
+# OS
+.DS_Store

@@ -11,9 +11,8 @@ OPENSEARCH_ENDPOINT = os.getenv("OPENSEARCH_ENDPOINT", "")
 OPENSEARCH_INDEX = os.getenv("OPENSEARCH_INDEX", "papers")
 OPENSEARCH_EMBEDDING_DIM = int(os.getenv("OPENSEARCH_EMBEDDING_DIM", "1536"))
 
-NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+NEPTUNE_ENDPOINT = os.getenv("NEPTUNE_ENDPOINT", "")
+NEPTUNE_PORT = int(os.getenv("NEPTUNE_PORT", "8182"))
 
 GROBID_URL = os.getenv("GROBID_URL", "http://localhost:8070")
 VILA_URL = os.getenv("VILA_URL", "http://127.0.0.1:8080")

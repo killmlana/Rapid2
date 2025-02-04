@@ -1,7 +1,6 @@
 import json
 
 import boto3
-from neo4j import GraphDatabase
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 
 from config.settings import (
@@ -10,11 +9,9 @@ from config.settings import (
     OPENSEARCH_ENDPOINT,
     OPENSEARCH_INDEX,
     OPENSEARCH_EMBEDDING_DIM,
-    NEO4J_URI,
-    NEO4J_USERNAME,
-    NEO4J_PASSWORD,
 )
 from processors.bedrock_embedder import BedrockEmbedder
+from processors.neptune_client import NeptuneGraph
 
 
 def get_aws_auth():
@@ -30,10 +27,6 @@ def create_opensearch_client():
         verify_certs=True,
         connection_class=RequestsHttpConnection,
     )
-
-
-def create_neo4j_driver():
-    return GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
 
 
 def setup_opensearch_index():
@@ -65,31 +58,36 @@ def setup_opensearch_index():
     client.indices.create(index=OPENSEARCH_INDEX, body=mappings)
 
 
-def extract_neo4j_data():
-    driver = create_neo4j_driver()
-    with driver.session() as session:
-        papers = session.run("MATCH (p:Paper) RETURN p.url AS paper_url").data()
-        sections = session.run(
-            "MATCH (s:Section)-[:PART_OF]->(p:Paper) "
-            "RETURN s.id AS section_id, s.title AS section_title, "
-            "s.level AS section_level, p.url AS paper_url"
-        ).data()
-        blocks = session.run(
-            "MATCH (b:Block)-[:CONTAINED_IN]->(s:Section)-[:PART_OF]->(p:Paper) "
-            "RETURN b.id AS block_id, b.text AS block_text, b.type AS block_type, "
-            "s.id AS section_id, s.title AS section_title, p.url AS paper_url"
-        ).data()
-        cited_blocks = session.run(
-            "MATCH (b:Block)-[:CONTAINED_IN_CITED]->(p:Paper) "
-            "RETURN b.id AS block_id, b.text AS block_text, b.type AS block_type, "
-            "p.url AS paper_url"
-        ).data()
-    driver.close()
+def extract_neptune_data(graph):
+    papers = graph._query(
+        "MATCH (p:Paper) RETURN p.url AS paper_url"
+    ).get("results", [])
+
+    sections = graph._query(
+        "MATCH (s:Section)-[:PART_OF]->(p:Paper) "
+        "RETURN s.id AS section_id, s.title AS section_title, "
+        "s.level AS section_level, p.url AS paper_url"
+    ).get("results", [])
+
+    blocks = graph._query(
+        "MATCH (b:Block)-[:CONTAINED_IN]->(s:Section)-[:PART_OF]->(p:Paper) "
+        "RETURN b.id AS block_id, b.text AS block_text, b.type AS block_type, "
+        "s.id AS section_id, s.title AS section_title, p.url AS paper_url"
+    ).get("results", [])
+
+    cited_blocks = graph._query(
+        "MATCH (b:Block)-[:CONTAINED_IN_CITED]->(p:Paper) "
+        "RETURN b.id AS block_id, b.text AS block_text, b.type AS block_type, "
+        "p.url AS paper_url"
+    ).get("results", [])
+
     return papers, sections, blocks, cited_blocks
 
 
-def index_papers_to_opensearch():
-    papers, sections, blocks, cited_blocks = extract_neo4j_data()
+def index_papers_to_opensearch(graph=None):
+    if graph is None:
+        graph = NeptuneGraph()
+    papers, sections, blocks, cited_blocks = extract_neptune_data(graph)
     embedder = BedrockEmbedder()
     client = create_opensearch_client()
 
@@ -164,81 +162,82 @@ def search_opensearch(query_embedding, top_k=5):
     return response["hits"]["hits"]
 
 
-def get_relevant_context_from_neo4j(search_results, neo4j_driver):
+def get_relevant_context_from_neptune(search_results, graph):
     context_items = []
     citation_ids = set()
 
-    with neo4j_driver.session() as session:
-        for hit in search_results:
-            source = hit["_source"]
-            node_type = source["node_type"]
-            node_id = source["node_id"]
+    for hit in search_results:
+        source = hit["_source"]
+        node_type = source["node_type"]
+        node_id = source["node_id"]
 
-            if node_type == "Block":
-                result = session.run(
-                    "MATCH (b:Block {id: $block_id}) "
-                    "OPTIONAL MATCH (b)-[:CONTAINED_IN]->(s:Section)-[:PART_OF]->(p:Paper) "
-                    "OPTIONAL MATCH (b)-[:CONTAINED_IN_CITED]->(cp:Paper) "
-                    "OPTIONAL MATCH (b)-[:CITES]->(c:Citation) "
-                    "RETURN b.id AS block_id, b.text AS block_text, b.type AS block_type, "
-                    "b.source AS source, "
-                    "s.id AS section_id, s.title AS section_title, "
-                    "COALESCE(p.url, cp.url) AS paper_url, "
-                    "COLLECT(DISTINCT {id: c.id, title: c.title, authors: c.authors, date: c.date}) AS citations",
-                    block_id=node_id,
-                ).single()
+        if node_type == "Block":
+            result = graph._query(
+                "MATCH (b:Block {id: $block_id}) "
+                "OPTIONAL MATCH (b)-[:CONTAINED_IN]->(s:Section)-[:PART_OF]->(p:Paper) "
+                "OPTIONAL MATCH (b)-[:CONTAINED_IN_CITED]->(cp:Paper) "
+                "OPTIONAL MATCH (b)-[:CITES]->(c:Citation) "
+                "RETURN b.id AS block_id, b.text AS block_text, b.type AS block_type, "
+                "b.source AS source, "
+                "s.id AS section_id, s.title AS section_title, "
+                "COALESCE(p.url, cp.url) AS paper_url, "
+                "COLLECT(DISTINCT {id: c.id, title: c.title, authors: c.authors, date: c.date}) AS citations",
+                {"block_id": node_id},
+            ).get("results", [])
 
-                if result:
-                    item = {
-                        "type": "Block",
-                        "id": result["block_id"],
-                        "text": result["block_text"],
-                        "block_type": result["block_type"],
-                        "section_id": result["section_id"],
-                        "section_title": result["section_title"],
-                        "paper_url": result["paper_url"],
-                        "source": result["source"] or "primary",
-                        "citations": [c for c in result["citations"] if c["id"] is not None],
-                    }
-                    context_items.append(item)
-                    for c in item["citations"]:
-                        if c["id"]:
-                            citation_ids.add(c["id"])
-
-            elif node_type == "Section":
-                result = session.run(
-                    "MATCH (s:Section {id: $section_id})-[:PART_OF]->(p:Paper) "
-                    "OPTIONAL MATCH (b:Block)-[:CONTAINED_IN]->(s) "
-                    "OPTIONAL MATCH (b)-[:CITES]->(c:Citation) "
-                    "RETURN s.id AS section_id, s.title AS section_title, p.url AS paper_url, "
-                    "COLLECT(DISTINCT {id: b.id, text: b.text, type: b.type}) AS blocks, "
-                    "COLLECT(DISTINCT {id: c.id, title: c.title, authors: c.authors, date: c.date}) AS citations",
-                    section_id=node_id,
-                ).single()
-
-                if result:
-                    item = {
-                        "type": "Section",
-                        "id": result["section_id"],
-                        "title": result["section_title"],
-                        "paper_url": result["paper_url"],
-                        "blocks": [b for b in result["blocks"] if b["id"] is not None],
-                        "citations": [c for c in result["citations"] if c["id"] is not None],
-                    }
-                    context_items.append(item)
-                    for c in item["citations"]:
-                        if c["id"]:
-                            citation_ids.add(c["id"])
-
-        citations = []
-        for cid in citation_ids:
-            result = session.run(
-                "MATCH (c:Citation {id: $cid}) "
-                "RETURN c.id AS id, c.title AS title, c.authors AS authors, c.date AS date",
-                cid=cid,
-            ).single()
             if result:
-                citations.append(dict(result))
+                r = result[0]
+                item = {
+                    "type": "Block",
+                    "id": r["block_id"],
+                    "text": r["block_text"],
+                    "block_type": r["block_type"],
+                    "section_id": r.get("section_id"),
+                    "section_title": r.get("section_title"),
+                    "paper_url": r["paper_url"],
+                    "source": r.get("source") or "primary",
+                    "citations": [c for c in r.get("citations", []) if c.get("id")],
+                }
+                context_items.append(item)
+                for c in item["citations"]:
+                    if c["id"]:
+                        citation_ids.add(c["id"])
+
+        elif node_type == "Section":
+            result = graph._query(
+                "MATCH (s:Section {id: $section_id})-[:PART_OF]->(p:Paper) "
+                "OPTIONAL MATCH (b:Block)-[:CONTAINED_IN]->(s) "
+                "OPTIONAL MATCH (b)-[:CITES]->(c:Citation) "
+                "RETURN s.id AS section_id, s.title AS section_title, p.url AS paper_url, "
+                "COLLECT(DISTINCT {id: b.id, text: b.text, type: b.type}) AS blocks, "
+                "COLLECT(DISTINCT {id: c.id, title: c.title, authors: c.authors, date: c.date}) AS citations",
+                {"section_id": node_id},
+            ).get("results", [])
+
+            if result:
+                r = result[0]
+                item = {
+                    "type": "Section",
+                    "id": r["section_id"],
+                    "title": r["section_title"],
+                    "paper_url": r["paper_url"],
+                    "blocks": [b for b in r.get("blocks", []) if b.get("id")],
+                    "citations": [c for c in r.get("citations", []) if c.get("id")],
+                }
+                context_items.append(item)
+                for c in item["citations"]:
+                    if c["id"]:
+                        citation_ids.add(c["id"])
+
+    citations = []
+    for cid in citation_ids:
+        result = graph._query(
+            "MATCH (c:Citation {id: $cid}) "
+            "RETURN c.id AS id, c.title AS title, c.authors AS authors, c.date AS date",
+            {"cid": cid},
+        ).get("results", [])
+        if result:
+            citations.append(result[0])
 
     return {"context_items": context_items, "citations": citations}
 
@@ -293,15 +292,14 @@ def query_claude(user_query, context):
 
 def process_rag_query(user_query):
     embedder = BedrockEmbedder()
-    neo4j_driver = create_neo4j_driver()
+    graph = NeptuneGraph()
 
     query_embedding = embedder.embed(user_query)
     search_results = search_opensearch(query_embedding)
-    context_data = get_relevant_context_from_neo4j(search_results, neo4j_driver)
+    context_data = get_relevant_context_from_neptune(search_results, graph)
     formatted_context = format_context_for_claude(context_data)
     response = query_claude(user_query, formatted_context)
 
-    neo4j_driver.close()
     return {
         "query": user_query,
         "response": response,

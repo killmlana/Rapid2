@@ -6,7 +6,7 @@ import requests
 from config.settings import SEMANTIC_SCHOLAR_API_KEY, MAX_CITATION_DEPTH, MAX_CITED_PAPERS
 from grobid_client import GrobidClient
 from vila_parser import VilaClient
-from processors.neo4j_manager import Neo4jGraph
+from processors.neptune_client import NeptuneGraph
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +14,8 @@ S2_API = "https://api.semanticscholar.org/graph/v1"
 
 
 class CitationCrawler:
-    def __init__(self, neo4j: Neo4jGraph, grobid: GrobidClient = None, vila: VilaClient = None):
-        self.neo4j = neo4j
+    def __init__(self, graph: NeptuneGraph, grobid: GrobidClient = None, vila: VilaClient = None):
+        self.graph = graph
         self.grobid = grobid or GrobidClient()
         self.vila = vila or VilaClient()
         self.s2_headers = {}
@@ -119,7 +119,7 @@ class CitationCrawler:
                 )
 
                 if relevant_blocks:
-                    self.neo4j.store_cited_paper_context(
+                    self.graph.store_cited_paper_context(
                         parent_paper_url, pdf_url, relevant_blocks
                     )
                     logger.info(
@@ -135,6 +135,6 @@ class CitationCrawler:
                 continue
 
     def crawl_paper_citations(self, paper_url):
-        citations = self.neo4j.get_paper_citations(paper_url)
+        citations = self.graph.get_paper_citations(paper_url)
         logger.info("Found %d citations to crawl for %s", len(citations), paper_url)
         self.crawl_citations(paper_url, citations)

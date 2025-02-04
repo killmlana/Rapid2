@@ -3,7 +3,7 @@ import sys
 
 from vila_parser import VilaClient
 from grobid_client import GrobidClient
-from processors.neo4j_manager import Neo4jGraph
+from processors.neptune_client import NeptuneGraph
 from processors.citation_crawler import CitationCrawler
 from processors.opensearch_client import (
     setup_opensearch_index,
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def process_research_paper(pdf_url, crawl_citations=True):
     vila = VilaClient()
     grobid = GrobidClient()
-    neo4j = Neo4jGraph()
+    graph = NeptuneGraph()
 
     logger.info("Parsing PDF with VILA: %s", pdf_url)
     vila_df = vila.parse_pdf(pdf_url)
@@ -31,16 +31,14 @@ def process_research_paper(pdf_url, crawl_citations=True):
     citations = grobid.parse_citations(xml_content)
     logger.info("Found %d citations", len(citations))
 
-    logger.info("Building knowledge graph")
-    neo4j.create_schema()
-    neo4j.store_paper(vila_df, citations, pdf_url)
+    logger.info("Building knowledge graph in Neptune")
+    graph.store_paper(vila_df, citations, pdf_url)
 
     if crawl_citations:
         logger.info("Crawling cited papers for additional context")
-        crawler = CitationCrawler(neo4j, grobid, vila)
+        crawler = CitationCrawler(graph, grobid, vila)
         crawler.crawl_paper_citations(pdf_url)
 
-    neo4j.close()
     logger.info("Paper processing complete: %s", pdf_url)
 
 

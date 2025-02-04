@@ -4,7 +4,7 @@ import pytest
 from processors.citation_crawler import CitationCrawler
 
 
-class FakeNeo4j:
+class FakeGraph:
     def __init__(self):
         self.stored = []
         self.citations_response = []
@@ -22,7 +22,7 @@ class FakeNeo4j:
 
 class TestCitationCrawler:
     def test_extract_relevant_sections_abstract(self):
-        crawler = CitationCrawler(neo4j=FakeNeo4j())
+        crawler = CitationCrawler(graph=FakeGraph())
         df = pd.DataFrame([
             {"text": "This paper studies transformers.", "type": "Abstract", "page": 1,
              "x1": 0, "y1": 0, "x2": 1, "y2": 1},
@@ -38,7 +38,7 @@ class TestCitationCrawler:
         assert "Section" in types
 
     def test_extract_relevant_sections_mention_matching(self):
-        crawler = CitationCrawler(neo4j=FakeNeo4j())
+        crawler = CitationCrawler(graph=FakeGraph())
         df = pd.DataFrame([
             {"text": "We propose a novel attention mechanism.", "type": "Paragraph", "page": 1,
              "x1": 0, "y1": 0, "x2": 1, "y2": 1},
@@ -51,17 +51,17 @@ class TestCitationCrawler:
         assert "attention" in blocks[0]["text"].lower()
 
     def test_extract_relevant_sections_empty_df(self):
-        crawler = CitationCrawler(neo4j=FakeNeo4j())
+        crawler = CitationCrawler(graph=FakeGraph())
         blocks = crawler.extract_relevant_sections(pd.DataFrame(), ["anything"])
         assert blocks == []
 
     def test_extract_relevant_sections_none_df(self):
-        crawler = CitationCrawler(neo4j=FakeNeo4j())
+        crawler = CitationCrawler(graph=FakeGraph())
         blocks = crawler.extract_relevant_sections(None, ["anything"])
         assert blocks == []
 
     def test_extract_relevant_sections_limit(self):
-        crawler = CitationCrawler(neo4j=FakeNeo4j())
+        crawler = CitationCrawler(graph=FakeGraph())
         rows = [
             {"text": f"Attention block {i}", "type": "Paragraph", "page": 1,
              "x1": 0, "y1": i, "x2": 1, "y2": i + 1}

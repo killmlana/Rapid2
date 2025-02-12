@@ -1,0 +1,12 @@
+environment            = "dev"
+aws_region             = "us-west-2"
+neptune_instance_class = "db.t3.medium"
+grobid_cpu             = 2048
+grobid_memory          = 4096
+grobid_desired_count   = 1
+vila_gpu_instance_type  = "g4dn.xlarge"
+vila_desired_count      = 1
+opensearch_instance_type      = "r6g.large.search"
+opensearch_volume_size        = 100
+annas_opensearch_instance_type = "r6g.large.search"
+annas_opensearch_volume_size   = 200

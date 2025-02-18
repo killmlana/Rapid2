@@ -24,5 +24,12 @@ data/vila_output/
 chunks_debug.json
 parsed_file.csv
 
+# OpenTofu / Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+.tofu/
+*.tfplan
+
 # OS
 .DS_Store

@@ -2,11 +2,6 @@ from processors.annas_client import AnnasArchiveClient
 
 
 class TestAnnasArchiveClient:
-    def test_resolve_download_url_direct(self):
-        client = AnnasArchiveClient("dummy")
-        paper = {"download_url": "https://example.com/paper.pdf"}
-        assert client.resolve_download_url(paper) == "https://example.com/paper.pdf"
-
     def test_resolve_download_url_doi(self):
         client = AnnasArchiveClient("dummy")
         paper = {"doi": "10.1234/test"}
@@ -30,11 +25,12 @@ class TestAnnasArchiveClient:
         paper = {}
         assert client.resolve_download_url(paper) is None
 
-    def test_resolve_download_url_priority(self):
+    def test_resolve_download_url_doi_takes_priority(self):
         client = AnnasArchiveClient("dummy")
         paper = {
-            "download_url": "https://direct.com/paper.pdf",
             "doi": "10.1234/test",
             "md5": "abc123",
+            "ipfs_cid": "QmHash",
         }
-        assert client.resolve_download_url(paper) == "https://direct.com/paper.pdf"
+        url = client.resolve_download_url(paper)
+        assert "10.1234/test" in url

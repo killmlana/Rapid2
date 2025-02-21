@@ -9,4 +9,4 @@ vila_desired_count      = 1
 opensearch_instance_type      = "r6g.large.search"
 opensearch_volume_size        = 100
 annas_opensearch_instance_type = "r6g.large.search"
-annas_opensearch_volume_size   = 200
+annas_opensearch_volume_size   = 150

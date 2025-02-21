@@ -11,10 +11,11 @@ from config.settings import AWS_REGION
 logger = logging.getLogger(__name__)
 
 ANNAS_INDEX = "annas-metadata"
+SCIENTIFIC_SOURCES = ["scihub", "libgen_rs", "crossref", "libgen_sci"]
 
 
 class AnnasArchiveClient:
-    """Search Anna's Archive metadata indexed in OpenSearch for paper discovery."""
+    """Search Anna's Archive scientific paper metadata indexed in OpenSearch."""
 
     def __init__(self, opensearch_endpoint):
         self.endpoint = opensearch_endpoint
@@ -45,7 +46,6 @@ class AnnasArchiveClient:
                     "title": {"type": "text", "analyzer": "english"},
                     "authors": {"type": "text"},
                     "doi": {"type": "keyword"},
-                    "isbn": {"type": "keyword"},
                     "md5": {"type": "keyword"},
                     "year": {"type": "integer"},
                     "language": {"type": "keyword"},
@@ -54,8 +54,9 @@ class AnnasArchiveClient:
                     "topic": {"type": "text"},
                     "description": {"type": "text", "analyzer": "english"},
                     "source": {"type": "keyword"},
-                    "download_url": {"type": "keyword"},
                     "ipfs_cid": {"type": "keyword"},
+                    "journal": {"type": "text"},
+                    "publisher": {"type": "keyword"},
                 },
             },
             "settings": {
@@ -90,7 +91,13 @@ class AnnasArchiveClient:
             {
                 "multi_match": {
                     "query": query,
-                    "fields": ["title^3", "authors^2", "description", "topic"],
+                    "fields": [
+                        "title^3",
+                        "authors^2",
+                        "description",
+                        "topic",
+                        "journal",
+                    ],
                     "type": "best_fields",
                 }
             }
@@ -98,6 +105,7 @@ class AnnasArchiveClient:
 
         filter_clauses = [
             {"term": {"extension": "pdf"}},
+            {"terms": {"source": SCIENTIFIC_SOURCES}},
         ]
 
         if filters:
@@ -107,6 +115,8 @@ class AnnasArchiveClient:
                 filter_clauses.append({"range": {"year": {"lte": filters["year_to"]}}})
             if filters.get("language"):
                 filter_clauses.append({"term": {"language": filters["language"]}})
+            if filters.get("journal"):
+                must_clauses.append({"match": {"journal": filters["journal"]}})
 
         search_body = {
             "size": max_results,
@@ -118,7 +128,7 @@ class AnnasArchiveClient:
             },
             "_source": [
                 "title", "authors", "doi", "md5", "year",
-                "extension", "source", "download_url", "ipfs_cid",
+                "extension", "source", "ipfs_cid", "journal",
             ],
         }
 
@@ -137,9 +147,6 @@ class AnnasArchiveClient:
         return papers
 
     def resolve_download_url(self, paper):
-        if paper.get("download_url"):
-            return paper["download_url"]
-
         if paper.get("doi"):
             return f"https://sci-hub.se/{paper['doi']}"
 

@@ -68,7 +68,7 @@ variable "opensearch_volume_size" {
   default = 100
 }
 
-# Anna's Archive metadata index
+# Anna's Archive metadata index (scientific papers only, ~50-80M records)
 variable "annas_opensearch_instance_type" {
   type    = string
   default = "r6g.large.search"
@@ -76,5 +76,5 @@ variable "annas_opensearch_instance_type" {
 
 variable "annas_opensearch_volume_size" {
   type    = number
-  default = 200
+  default = 150
 }

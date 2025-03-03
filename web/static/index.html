@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapid2</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0a0a0b;
+            --surface: #141416;
+            --surface2: #1c1c20;
+            --border: #2a2a2e;
+            --text: #e4e4e7;
+            --text2: #a1a1aa;
+            --accent: #6366f1;
+            --accent-dim: #4f46e5;
+            --green: #22c55e;
+            --amber: #f59e0b;
+            --red: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+        }
+
+        header .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span { color: var(--accent); }
+
+        nav { display: flex; gap: 4px; }
+
+        nav button {
+            background: none;
+            border: 1px solid transparent;
+            color: var(--text2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.15s;
+        }
+
+        nav button:hover { color: var(--text); background: var(--surface); }
+        nav button.active { color: var(--text); background: var(--surface2); border-color: var(--border); }
+
+        main { padding: 32px 0; }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .subtitle {
+            color: var(--text2);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        input, textarea {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        input:focus, textarea:focus { border-color: var(--accent); }
+        input::placeholder, textarea::placeholder { color: var(--text2); }
+        textarea { resize: vertical; min-height: 80px; }
+
+        button.primary {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+
+        button.primary:hover { background: var(--accent-dim); }
+        button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .filters input {
+            max-width: 120px;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        .filters label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text2);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .filters input[type="checkbox"] {
+            flex: none;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+        }
+
+        .result-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 24px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .result-box.empty {
+            color: var(--text2);
+            text-align: center;
+            padding: 48px 24px;
+        }
+
+        .citations {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .citations h4 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text2);
+            margin-bottom: 8px;
+        }
+
+        .citation-item {
+            font-size: 13px;
+            color: var(--text2);
+            padding: 4px 0;
+        }
+
+        .paper-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 8px;
+            transition: border-color 0.15s;
+        }
+
+        .paper-card:hover { border-color: var(--accent); }
+
+        .paper-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .paper-meta {
+            font-size: 13px;
+            color: var(--text2);
+        }
+
+        .paper-meta span { margin-right: 12px; }
+
+        .paper-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .paper-actions button {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .paper-actions button:hover { color: var(--text); border-color: var(--accent); }
+
+        .status-bar {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+
+        .status-bar .label { color: var(--text2); }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.queued { background: var(--border); color: var(--text2); }
+        .badge.processing { background: #1e3a5f; color: var(--accent); }
+        .badge.done { background: #14532d; color: var(--green); }
+        .badge.error { background: #451a1a; color: var(--red); }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .url-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+
+        .url-entry {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .url-entry input { font-size: 13px; padding: 8px 12px; }
+
+        .url-entry button {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text2);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .url-entry button:hover { border-color: var(--red); color: var(--red); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">Rapid<span>2</span></div>
+            <nav>
+                <button class="active" onclick="switchPanel('query')">Ask</button>
+                <button onclick="switchPanel('search')">Discover</button>
+                <button onclick="switchPanel('ingest')">Ingest</button>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+
+            <!-- ASK PANEL -->
+            <div id="panel-query" class="panel active">
+                <h2>Ask your papers</h2>
+                <p class="subtitle">Query the knowledge base built from your ingested research papers.</p>
+                <div class="input-group">
+                    <input type="text" id="query-input" placeholder="What are the key findings about transformer attention mechanisms?"
+                        onkeydown="if(event.key==='Enter')submitQuery()">
+                    <button class="primary" onclick="submitQuery()" id="query-btn">Ask</button>
+                </div>
+                <div id="query-result" class="result-box empty">Responses will appear here</div>
+            </div>
+
+            <!-- DISCOVER PANEL -->
+            <div id="panel-search" class="panel">
+                <h2>Discover papers</h2>
+                <p class="subtitle">Search Anna's Archive for scientific papers by topic, then ingest them into the pipeline.</p>
+                <div class="input-group">
+                    <input type="text" id="search-input" placeholder="transformer attention mechanisms in NLP"
+                        onkeydown="if(event.key==='Enter')submitSearch()">
+                    <button class="primary" onclick="submitSearch()" id="search-btn">Search</button>
+                </div>
+                <div class="filters">
+                    <input type="number" id="search-year-from" placeholder="Year from">
+                    <input type="number" id="search-year-to" placeholder="Year to">
+                    <input type="number" id="search-max" placeholder="Max" value="10" min="1" max="50">
+                    <label><input type="checkbox" id="search-crawl" checked> Crawl citations</label>
+                </div>
+                <div id="search-results"></div>
+            </div>
+
+            <!-- INGEST PANEL -->
+            <div id="panel-ingest" class="panel">
+                <h2>Ingest papers</h2>
+                <p class="subtitle">Process PDF URLs through the pipeline — VILA layout analysis, GROBID citation extraction, Neptune graph, OpenSearch embeddings.</p>
+                <div id="url-list" class="url-list">
+                    <div class="url-entry">
+                        <input type="text" placeholder="https://arxiv.org/pdf/2106.00676.pdf">
+                        <button onclick="removeUrl(this)">×</button>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:16px;">
+                    <button class="primary" onclick="addUrl()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);">+ Add URL</button>
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text2);font-size:13px;margin-left:auto;">
+                        <input type="checkbox" id="ingest-crawl" checked style="width:16px;height:16px;accent-color:var(--accent);"> Crawl citations
+                    </label>
+                    <button class="primary" onclick="submitIngest()" id="ingest-btn">Process</button>
+                </div>
+                <div id="ingest-status"></div>
+            </div>
+
+        </div>
+    </main>
+
+<script>
+function switchPanel(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    event.target.classList.add('active');
+}
+
+async function submitQuery() {
+    const input = document.getElementById('query-input');
+    const btn = document.getElementById('query-btn');
+    const result = document.getElementById('query-result');
+    const query = input.value.trim();
+    if (!query) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Thinking...';
+    result.className = 'result-box';
+    result.innerHTML = '<span class="loading"></span> Searching knowledge base and generating response...';
+
+    try {
+        const resp = await fetch('/api/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({query})
+        });
+        const data = await resp.json();
+
+        let html = escapeHtml(data.response);
+
+        if (data.citations && data.citations.length > 0) {
+            html += '<div class="citations"><h4>References</h4>';
+            data.citations.forEach(c => {
+                const authors = Array.isArray(c.authors) ? c.authors.join(', ') : (c.authors || '');
+                html += `<div class="citation-item">[${escapeHtml(c.id)}] ${escapeHtml(authors)} — "${escapeHtml(c.title || '')}" (${escapeHtml(c.date || '')})</div>`;
+            });
+            html += '</div>';
+        }
+        result.innerHTML = html;
+    } catch (e) {
+        result.innerHTML = 'Error: ' + escapeHtml(e.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Ask';
+}
+
+async function submitSearch() {
+    const input = document.getElementById('search-input');
+    const btn = document.getElementById('search-btn');
+    const container = document.getElementById('search-results');
+    const topic = input.value.trim();
+    if (!topic) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Searching...';
+    container.innerHTML = '<div class="result-box"><span class="loading"></span> Searching Anna\'s Archive...</div>';
+
+    try {
+        const yearFrom = document.getElementById('search-year-from').value || null;
+        const yearTo = document.getElementById('search-year-to').value || null;
+        const maxPapers = parseInt(document.getElementById('search-max').value) || 10;
+
+        const resp = await fetch('/api/search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                topic,
+                max_papers: maxPapers,
+                year_from: yearFrom ? parseInt(yearFrom) : null,
+                year_to: yearTo ? parseInt(yearTo) : null,
+            })
+        });
+        const data = await resp.json();
+
+        if (!data.papers || data.papers.length === 0) {
+            container.innerHTML = '<div class="result-box empty">No papers found</div>';
+        } else {
+            let html = '';
+            data.papers.forEach(p => {
+                html += `<div class="paper-card">
+                    <div class="paper-title">${escapeHtml(p.title)}</div>
+                    <div class="paper-meta">
+                        ${p.authors ? '<span>' + escapeHtml(p.authors) + '</span>' : ''}
+                        ${p.year ? '<span>' + p.year + '</span>' : ''}
+                        ${p.journal ? '<span>' + escapeHtml(p.journal) + '</span>' : ''}
+                        ${p.doi ? '<span>DOI: ' + escapeHtml(p.doi) + '</span>' : ''}
+                    </div>
+                    <div class="paper-actions">
+                        ${p.download_url ? '<button onclick="ingestSingle(\'' + escapeHtml(p.download_url) + '\')">Ingest this paper</button>' : ''}
+                    </div>
+                </div>`;
+            });
+            html += `<div style="margin-top:12px;"><button class="primary" onclick="ingestAllSearchResults()">Ingest all ${data.papers.length} papers</button></div>`;
+            container.innerHTML = html;
+            window._lastSearchPapers = data.papers;
+        }
+    } catch (e) {
+        container.innerHTML = '<div class="result-box">Error: ' + escapeHtml(e.message) + '</div>';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Search';
+}
+
+function ingestSingle(url) {
+    const crawl = document.getElementById('search-crawl').checked;
+    startIngestJob([url], crawl);
+}
+
+function ingestAllSearchResults() {
+    if (!window._lastSearchPapers) return;
+    const urls = window._lastSearchPapers.map(p => p.download_url).filter(Boolean);
+    const crawl = document.getElementById('search-crawl').checked;
+    startIngestJob(urls, crawl);
+    switchPanel('ingest');
+    document.querySelectorAll('nav button')[2].classList.add('active');
+    document.querySelectorAll('nav button')[1].classList.remove('active');
+}
+
+function addUrl() {
+    const list = document.getElementById('url-list');
+    const entry = document.createElement('div');
+    entry.className = 'url-entry';
+    entry.innerHTML = '<input type="text" placeholder="https://arxiv.org/pdf/..."><button onclick="removeUrl(this)">×</button>';
+    list.appendChild(entry);
+}
+
+function removeUrl(btn) {
+    const list = document.getElementById('url-list');
+    if (list.children.length > 1) btn.parentElement.remove();
+}
+
+function submitIngest() {
+    const inputs = document.querySelectorAll('#url-list input');
+    const urls = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+    if (urls.length === 0) return;
+    const crawl = document.getElementById('ingest-crawl').checked;
+    startIngestJob(urls, crawl);
+}
+
+async function startIngestJob(urls, crawlCitations) {
+    const container = document.getElementById('ingest-status');
+    container.innerHTML = '<div class="status-bar"><span class="loading"></span> Starting job...</div>';
+
+    try {
+        const resp = await fetch('/api/ingest', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({urls, crawl_citations: crawlCitations})
+        });
+        const data = await resp.json();
+        pollJob(data.job_id);
+    } catch (e) {
+        container.innerHTML = '<div class="status-bar">Error: ' + escapeHtml(e.message) + '</div>';
+    }
+}
+
+async function pollJob(jobId) {
+    const container = document.getElementById('ingest-status');
+
+    const poll = async () => {
+        try {
+            const resp = await fetch('/api/jobs/' + jobId);
+            const job = await resp.json();
+
+            const pct = job.total > 0 ? Math.round((job.current / job.total) * 100) : 0;
+            let html = `<div class="status-bar">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        ${job.status !== 'done' && job.status !== 'error' ? '<span class="loading"></span>' : ''}
+                        <span class="badge ${job.status}">${job.status}</span>
+                        <span class="label" style="margin-left:8px;">${job.current}/${job.total} papers</span>
+                    </div>
+                </div>
+                <div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div>`;
+
+            if (job.current_url && job.status === 'processing') {
+                html += `<div style="margin-top:8px;font-size:12px;color:var(--text2);">Processing: ${escapeHtml(job.current_url)}</div>`;
+            }
+
+            if (job.completed.length > 0) {
+                html += '<div style="margin-top:12px;">';
+                job.completed.forEach(u => {
+                    html += `<div style="font-size:12px;color:var(--green);">✓ ${escapeHtml(u)}</div>`;
+                });
+                html += '</div>';
+            }
+
+            if (job.failed.length > 0) {
+                html += '<div style="margin-top:8px;">';
+                job.failed.forEach(f => {
+                    html += `<div style="font-size:12px;color:var(--red);">✗ ${escapeHtml(f.url)} — ${escapeHtml(f.error)}</div>`;
+                });
+                html += '</div>';
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+
+            if (job.status !== 'done' && job.status !== 'error') {
+                setTimeout(poll, 2000);
+            }
+        } catch (e) {
+            container.innerHTML = '<div class="status-bar">Poll error: ' + escapeHtml(e.message) + '</div>';
+        }
+    };
+
+    poll();
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = String(str);
+    return d.innerHTML;
+}
+</script>
+</body>
+</html>

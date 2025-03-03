@@ -77,6 +77,36 @@ resource "aws_route_table_association" "private" {
 
 # Security Groups
 
+resource "aws_security_group" "alb" {
+  name_prefix = "${var.project_name}-alb-"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTP"
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTPS"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.project_name}-alb-sg" }
+}
+
 resource "aws_security_group" "ecs_services" {
   name_prefix = "${var.project_name}-ecs-"
   vpc_id      = aws_vpc.main.id
@@ -95,6 +125,14 @@ resource "aws_security_group" "ecs_services" {
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
     description = "VILA"
+  }
+
+  ingress {
+    from_port       = 8000
+    to_port         = 8000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+    description     = "Web from ALB"
   }
 
   egress {

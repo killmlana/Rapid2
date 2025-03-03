@@ -1,3 +1,7 @@
+output "web_url" {
+  value = "http://${aws_lb.web.dns_name}"
+}
+
 output "neptune_endpoint" {
   value = aws_neptune_cluster.main.endpoint
 }
@@ -20,6 +24,10 @@ output "ecr_grobid_url" {
 
 output "ecr_vila_url" {
   value = aws_ecr_repository.vila.repository_url
+}
+
+output "ecr_web_url" {
+  value = aws_ecr_repository.web.repository_url
 }
 
 output "grobid_service_dns" {

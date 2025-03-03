@@ -21,6 +21,7 @@ rm -f plan.tfplan
 
 GROBID_ECR=$(tofu output -raw ecr_grobid_url)
 VILA_ECR=$(tofu output -raw ecr_vila_url)
+WEB_ECR=$(tofu output -raw ecr_web_url)
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # 2. Docker build & push
@@ -36,15 +37,20 @@ echo "Building VILA..."
 docker build -t "${VILA_ECR}:latest" -f "$DOCKER_DIR/vila/Dockerfile" "$PROJECT_ROOT"
 docker push "${VILA_ECR}:latest"
 
+echo "Building Web..."
+docker build -t "${WEB_ECR}:latest" -f "$DOCKER_DIR/web/Dockerfile" "$PROJECT_ROOT"
+docker push "${WEB_ECR}:latest"
+
 # 3. Force ECS service update
 echo "--- Updating ECS services ---"
-CLUSTER=$(tofu output -raw vpc_id | sed 's/vpc-/rapid2-cluster/')
 aws ecs update-service --cluster rapid2-cluster --service rapid2-grobid --force-new-deployment --region "$AWS_REGION" > /dev/null
 aws ecs update-service --cluster rapid2-cluster --service rapid2-vila --force-new-deployment --region "$AWS_REGION" > /dev/null
+aws ecs update-service --cluster rapid2-cluster --service rapid2-web --force-new-deployment --region "$AWS_REGION" > /dev/null
 
 # 4. Print endpoints
 echo ""
 echo "=== Deployment complete ==="
+echo "Web UI:     $(tofu output -raw web_url)"
 echo "Neptune:    $(tofu output -raw neptune_endpoint)"
 echo "OpenSearch: $(tofu output -raw opensearch_papers_endpoint)"
 echo "Annas OS:   $(tofu output -raw opensearch_annas_endpoint)"

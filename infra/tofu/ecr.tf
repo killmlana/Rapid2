@@ -18,10 +18,21 @@ resource "aws_ecr_repository" "vila" {
   }
 }
 
+resource "aws_ecr_repository" "web" {
+  name                 = "${var.project_name}/web"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
 locals {
   ecr_repos = {
     grobid = aws_ecr_repository.grobid.name
     vila   = aws_ecr_repository.vila.name
+    web    = aws_ecr_repository.web.name
   }
 }
 

@@ -16,6 +16,7 @@ from processors.opensearch_client import (
     process_rag_query,
 )
 from processors.neptune_client import NeptuneGraph
+from processors.image_processor import ImageProcessor
 from vila_parser import VilaClient
 from grobid_client import GrobidClient
 from processors.citation_crawler import CitationCrawler
@@ -110,6 +111,14 @@ def _run_ingest(job_id, urls, crawl_citations):
                 xml_content = grobid.process_pdf(url)
                 citations = grobid.parse_citations(xml_content)
                 graph.store_paper(vila_df, citations, url)
+
+                try:
+                    img_proc = ImageProcessor()
+                    figures = img_proc.process_paper_figures(url, vila_df)
+                    if figures:
+                        graph.store_figures(figures, url)
+                except Exception:
+                    logger.exception("Figure processing failed for: %s", url)
 
                 if crawl_citations:
                     crawler = CitationCrawler(graph, grobid, vila)

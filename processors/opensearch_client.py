@@ -81,13 +81,19 @@ def extract_neptune_data(graph):
         "p.url AS paper_url"
     ).get("results", [])
 
-    return papers, sections, blocks, cited_blocks
+    figures = graph._query(
+        "MATCH (f:Figure)-[:PART_OF]->(p:Paper) "
+        "RETURN f.id AS figure_id, f.caption AS caption, f.description AS description, "
+        "f.page AS page, f.s3_uri AS s3_uri, f.figure_type AS figure_type, p.url AS paper_url"
+    ).get("results", [])
+
+    return papers, sections, blocks, cited_blocks, figures
 
 
 def index_papers_to_opensearch(graph=None):
     if graph is None:
         graph = NeptuneGraph()
-    papers, sections, blocks, cited_blocks = extract_neptune_data(graph)
+    papers, sections, blocks, cited_blocks, figures = extract_neptune_data(graph)
     embedder = BedrockEmbedder()
     client = create_opensearch_client()
 
@@ -139,6 +145,19 @@ def index_papers_to_opensearch(graph=None):
             "paper_url": block["paper_url"],
             "embedding": embedder.embed(block["block_text"]),
             "source": "cited_paper",
+        }
+        client.index(index=OPENSEARCH_INDEX, body=doc)
+
+    for fig in figures:
+        content = f"Figure: {fig.get('caption', '')} — {fig.get('description', '')}"
+        doc = {
+            "node_id": fig["figure_id"],
+            "node_type": "Figure",
+            "content": content,
+            "paper_url": fig["paper_url"],
+            "embedding": embedder.embed(content),
+            "source": "primary",
+            "s3_uri": fig.get("s3_uri", ""),
         }
         client.index(index=OPENSEARCH_INDEX, body=doc)
 
@@ -203,6 +222,28 @@ def get_relevant_context_from_neptune(search_results, graph):
                     if c["id"]:
                         citation_ids.add(c["id"])
 
+        elif node_type == "Figure":
+            result = graph._query(
+                "MATCH (f:Figure {id: $fig_id})-[:PART_OF]->(p:Paper) "
+                "RETURN f.id AS figure_id, f.caption AS caption, f.description AS description, "
+                "f.page AS page, f.s3_uri AS s3_uri, f.figure_type AS figure_type, p.url AS paper_url",
+                {"fig_id": node_id},
+            ).get("results", [])
+
+            if result:
+                r = result[0]
+                item = {
+                    "type": "Figure",
+                    "id": r["figure_id"],
+                    "caption": r.get("caption", ""),
+                    "description": r.get("description", ""),
+                    "page": r.get("page"),
+                    "s3_uri": r.get("s3_uri", ""),
+                    "figure_type": r.get("figure_type", "Figure"),
+                    "paper_url": r["paper_url"],
+                }
+                context_items.append(item)
+
         elif node_type == "Section":
             result = graph._query(
                 "MATCH (s:Section {id: $section_id})-[:PART_OF]->(p:Paper) "
@@ -254,6 +295,12 @@ def format_context_for_claude(context_data):
             if item.get("citations"):
                 refs = ", ".join(f"[{c['id']}]" for c in item["citations"])
                 parts.append(f"**Citations:** {refs}\n")
+        elif item["type"] == "Figure":
+            parts.append(f"## {item.get('figure_type', 'Figure')} (Page {item.get('page', '?')})")
+            if item.get("caption"):
+                parts.append(f"**Caption:** {item['caption']}")
+            parts.append(f"**Visual description:** {item.get('description', 'No description available')}\n")
+
         elif item["type"] == "Section":
             parts.append(f"## Section: {item['title']}")
             for block in item.get("blocks", []):

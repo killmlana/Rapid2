@@ -70,6 +70,28 @@ class TestFormatContext:
         assert "Methodology" in result
         assert "We used BERT." in result
 
+    def test_formats_figure_context(self):
+        context_data = {
+            "context_items": [
+                {
+                    "type": "Figure",
+                    "id": "figure-5",
+                    "caption": "Fig 1: Model architecture",
+                    "description": "A diagram showing transformer encoder-decoder layers with self-attention.",
+                    "page": 3,
+                    "s3_uri": "s3://bucket/figures/abc/figure_0.png",
+                    "figure_type": "Figure",
+                    "paper_url": "https://example.com/paper.pdf",
+                },
+            ],
+            "citations": [],
+        }
+
+        result = format_context_for_claude(context_data)
+        assert "Model architecture" in result
+        assert "transformer encoder-decoder" in result
+        assert "Page 3" in result
+
     def test_empty_context(self):
         result = format_context_for_claude({"context_items": [], "citations": []})
         assert "Relevant Research Paper Context" in result

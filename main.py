@@ -5,6 +5,7 @@ from vila_parser import VilaClient
 from grobid_client import GrobidClient
 from processors.neptune_client import NeptuneGraph
 from processors.citation_crawler import CitationCrawler
+from processors.image_processor import ImageProcessor
 from processors.annas_client import AnnasArchiveClient
 from processors.opensearch_client import (
     setup_opensearch_index,
@@ -35,6 +36,16 @@ def process_research_paper(pdf_url, crawl_citations=True):
 
     logger.info("Building knowledge graph in Neptune")
     graph.store_paper(vila_df, citations, pdf_url)
+
+    logger.info("Extracting and describing figures")
+    try:
+        img_proc = ImageProcessor()
+        figures = img_proc.process_paper_figures(pdf_url, vila_df)
+        if figures:
+            graph.store_figures(figures, pdf_url)
+            logger.info("Stored %d figures", len(figures))
+    except Exception:
+        logger.exception("Figure processing failed, continuing without images")
 
     if crawl_citations:
         logger.info("Crawling cited papers for additional context")

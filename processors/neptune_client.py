@@ -271,5 +271,28 @@ class NeptuneGraph:
                 },
             )
 
+    def store_figures(self, figures, pdf_url, current_section_id="section-unassigned"):
+        for fig in figures:
+            self._query(
+                "CREATE (f:Figure {"
+                "id: $id, caption: $caption, description: $description, "
+                "page: $page, s3_uri: $s3_uri, figure_type: $figure_type"
+                "})",
+                {
+                    "id": fig["figure_id"],
+                    "caption": fig.get("caption", ""),
+                    "description": fig["description"],
+                    "page": fig["page"],
+                    "s3_uri": fig["s3_uri"],
+                    "figure_type": fig.get("type", "Figure"),
+                },
+            )
+            self._query(
+                "MATCH (f:Figure {id: $fig_id}) "
+                "MATCH (p:Paper {url: $url}) "
+                "CREATE (f)-[:PART_OF]->(p)",
+                {"fig_id": fig["figure_id"], "url": pdf_url},
+            )
+
     def close(self):
         pass

@@ -8,13 +8,15 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket         = "rapid2-tfstate"
-    key            = "infra/terraform.tfstate"
-    region         = "us-west-2"
-    dynamodb_table = "rapid2-tflock"
-    encrypt        = true
-  }
+  # Using local state for initial deployment.
+  # To migrate to S3 backend, create the bucket and uncomment:
+  # backend "s3" {
+  #   bucket         = "rapid2-tfstate"
+  #   key            = "infra/terraform.tfstate"
+  #   region         = "us-west-2"
+  #   dynamodb_table = "rapid2-tflock"
+  #   encrypt        = true
+  # }
 }
 
 provider "aws" {

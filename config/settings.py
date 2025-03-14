@@ -6,7 +6,7 @@ load_dotenv()
 
 AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
 BEDROCK_EMBEDDING_MODEL = os.getenv("BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-text-v1")
-BEDROCK_LLM_MODEL = os.getenv("BEDROCK_LLM_MODEL", "anthropic.claude-3-5-sonnet-20241022-v2:0")
+BEDROCK_LLM_MODEL = os.getenv("BEDROCK_LLM_MODEL", "anthropic.claude-sonnet-4-6")
 
 OPENSEARCH_ENDPOINT = os.getenv("OPENSEARCH_ENDPOINT", "")
 OPENSEARCH_INDEX = os.getenv("OPENSEARCH_INDEX", "papers")
